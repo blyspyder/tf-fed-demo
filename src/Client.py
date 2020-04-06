@@ -45,13 +45,15 @@ class Clients:
         return self.sess.run([self.model.acc_op, self.model.loss_op],
                              feed_dict=feed_dict)
 
-    def train_epoch(self, cid, batch_size=256, dropout_rate=0.4):
+    def train_epoch(self, cid, batch_size=256, dropout_rate=0.7):
         dataset = self.dataset.train[cid]
 
         with self.graph.as_default():
             for _ in range(math.ceil(dataset.size // batch_size)):
+            #for _ in range(1):
                 batch_x, batch_y = dataset.next_batch(batch_size)
-                batch_x = data_augmentation(batch_x) #做数据增强处理
+                batch_x = data_augmentation(batch_x,batch_y) #做数据增强处理
+
                 feed_dict = {
                     self.model.X: batch_x,
                     self.model.Y: batch_y,
@@ -100,13 +102,39 @@ def _random_crop(batch, crop_shape, padding=None):
                                     nw:nw + crop_shape[1]]
     return new_batch
 
-def _random_flip_leftright(batch):
+def _random_flip_leftright(batch,batch_y):
     for i in range(len(batch)):
+        '''
+        filpped_le_re=tf.image.random_flip_left_right(batch_x[i])   #随机左右翻转
+        print(type(filpped_le_re))
+        np.concatenate(batch_x,filpped_le_re)
+        batch_x.append(filpped_le_re)
+        batch_y.append(batch_y[i])
+        filpped_up_down=tf.image.random_flip_up_down(batch_x[i])    #随机上下翻转
+        batch_x.append(filpped_up_down)
+        batch_y.append(batch_y[i])
+
+        # 随机设置图片的对比度
+        image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
+        batch_x.append(image)
+        batch_y.append(batch_y[i])
+
+        # 随机设置图片的色度
+        image2 = tf.image.random_hue(image, max_delta=0.3)
+        batch_x.append(image2)
+        batch_y.append(batch_y[i])
+
+        adjust=tf.image.random_brightness(filpped_up_down,0.4)
+        batch_x.append(adjust)
+        batch_y.append(batch_y[i])
+
+        '''
         if bool(random.getrandbits(1)):
             batch[i] = np.fliplr(batch[i])
+
     return batch
 
-def data_augmentation(batch):
-    batch = _random_flip_leftright(batch)
+def data_augmentation(batch_x,batch_y):
+    batch= _random_flip_leftright(batch_x,batch_y)
     batch = _random_crop(batch, [32, 32], 4)
     return batch
